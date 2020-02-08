@@ -1,10 +1,13 @@
 ;;;; srfi-55.lisp
 
-(cl:in-package :srfi-55.internal)
+(cl:in-package "https://github.com/g000001/srfi-55#internals")
+
 
 (def-suite srfi-55)
 
+
 (in-suite srfi-55)
+
 
 ;;;; Reference implementation for SRFI-55
 ;
@@ -12,14 +15,16 @@
 
 (defvar *available-extensions* '())
 
+
 (defun register-extension (id action &optional (compare #'equal))
-  (assert (functionp action))
-  (assert (functionp compare))
+  (check-type action function)
+  (check-type compare function)
   (setq *available-extensions*
         (cons (list compare
                     id
                     action)
               *available-extensions*)) )
+
 
 (defun find-extension (id)
   (labels ((lookup (exts)
@@ -31,23 +36,31 @@
                        (lookup (cdr exts)) ) ) )))
     (lookup *available-extensions*)) )
 
+
+(defun find-extensions (&rest ids)
+  (mapc #'find-extension ids))
+
+
 (define-syntax require-extension
-  (syntax-rules (srfi)
-    ((_ "internal" (srfi id ***))
-     (progn (find-extension '(srfi id) ***)) )
+  (syntax-rules (:srfi)
+    ((_ "internal" (:srfi id ***))
+     (find-extensions '(:srfi id) ***) )
     ((_ "internal" id)
      (find-extension 'id) )
     ((_ clause ***)
-     (progn (require-extension "internal" clause) ***)) ) )
+     (eval-when (:compile-toplevel :load-toplevel :execute)
+       (require-extension "internal" clause) ***)) ) )
 
-; Example of registering extensions:
-;
-;   (register-extension '(srfi 1) (lambda () (load "/usr/local/lib/scheme/srfi-1.scm")))
-;
-; (register-extension '(srfi 1)
-;                     #+quicklisp
-;                     (lambda () (ql:quickload :srfi-1)))
 
+#||||
+ Example of registering extensions:
+
+   (register-extension '(srfi 1) (lambda () (load "/usr/local/lib/scheme/srfi-1.scm")))
+
+ (register-extension '(srfi 1)
+                     #+quicklisp
+                     (lambda () (ql:quickload 'srfi-1)) )
+||||#
 ;(require-extension (srfi 1))
 ;>>  To load "srfi-1":
 ;>>    Load 1 ASDF system:
@@ -55,13 +68,18 @@
 ;>>  ; Loading "srfi-1"
 ;>>
 ;>>
-;=>  (:SRFI-1)
+;=>  (SRFI-1)
+
+(defun macroexpand-all (form)
+  #+sbcl (sb-cltl2:macroexpand-all form)
+  #+lispworks (walker:walk-form form))
+
 
 (test require-extension
   (is (equal '() (require-extension)))
-  (is (equal (#+sbcl sb-cltl2:macroexpand-all
-                     '(require-extension (srfi 1 13 14)))
-             '(PROGN (PROGN (FIND-EXTENSION '(SRFI 1) '(SRFI 13) '(SRFI 14)))))))
+  (is (equal (macroexpand-all '(require-extension (:srfi 1 13 14)))
+             '(eval-when (:compile-toplevel :load-toplevel :execute)
+               (find-extensions '(:srfi 1) '(:srfi 13) '(:srfi 14))))))
 
 
-;;; eof
+;;; *EOF*

@@ -1,4 +1,7 @@
-* SRFI 55: require-extension
+# SRFI 55 for CL: require-extension
+
+* https://srfi.schemers.org/srfi-55
+* License: Unlicense
 
 - Copyright (c) Felix L. Winkelmann and D.C. Frost (2004). All Rights Reserved.
 
